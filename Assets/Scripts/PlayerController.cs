@@ -20,7 +20,7 @@ public class PlayerController : MonoBehaviour
     void Update()
     {
         moveInput = moveAction.ReadValue<Vector2>();
-        Debug.Log($"Move Input: {moveInput}");
+        
         PlayerTorque();
 
     }
