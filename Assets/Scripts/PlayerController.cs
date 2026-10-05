@@ -7,7 +7,8 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float torqueamount = 1f;
     [SerializeField] private float boostSpeed = 30f;
     [SerializeField] private ParticleSystem SnowParticles; // Particle system for boost effects
-    
+    [SerializeField] private ScoreManager scoreManager; // Reference to the ScoreManager component
+
     private bool CanControlPlayer = true; // Flag to control player input
 
     float baseSpeed ;
@@ -54,6 +55,7 @@ public class PlayerController : MonoBehaviour
             flipCount++;
             Debug.Log("Flips: " + flipCount);
             totalRotation = 0; // Reset the total rotation after a flip
+            scoreManager.AddScore(flipCount * 100); // Update the score in the ScoreManager
         }
         previousRotation = currentRotation;
     }
