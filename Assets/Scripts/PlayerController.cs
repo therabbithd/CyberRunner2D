@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -8,11 +9,16 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private ParticleSystem SnowParticles; // Particle system for boost effects
     
     private bool CanControlPlayer = true; // Flag to control player input
+
     float baseSpeed ;
+
     SurfaceEffector2D surfaceEffector2D;
     InputAction moveAction;
     Vector2 moveInput;
     Rigidbody2D rb;
+    int flipCount;
+    float previousRotation;
+    float totalRotation;
 
     public bool CanControlPlayer1 { get => CanControlPlayer; set => CanControlPlayer = value; }
 
@@ -32,8 +38,26 @@ public class PlayerController : MonoBehaviour
         moveInput = moveAction.ReadValue<Vector2>();
         PlayerTorque();
         BoostPlayer();
+        CalculateFlips();
 
     }
+
+    /// <summary>
+    /// Calculates the number of flips the player has performed based on their rotation.
+    /// </summary>
+    private void CalculateFlips()
+    {
+        float currentRotation = transform.rotation.eulerAngles.z;
+        totalRotation += Mathf.DeltaAngle(previousRotation, currentRotation);
+        if (Math.Abs(totalRotation) > 340 || Math.Abs(totalRotation) < -340)
+        {
+            flipCount++;
+            Debug.Log("Flips: " + flipCount);
+            totalRotation = 0; // Reset the total rotation after a flip
+        }
+        previousRotation = currentRotation;
+    }
+
     /// <summary>
     /// Applies torque to the player based on the horizontal input from the move action.
     /// </summary>
