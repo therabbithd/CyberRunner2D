@@ -3,7 +3,12 @@ using UnityEngine.SceneManagement;
 
 public class CrashDetector : MonoBehaviour
 {
-    [SerializeField] private ParticleSystem finishParticles; // Particle system for finish line effects
+    [SerializeField] private ParticleSystem bloodParticles; // Particle system for blood effects
+    PlayerController playerController; // Reference to the PlayerController script
+    void Start()
+    {
+        playerController = FindAnyObjectByType<PlayerController>(); // Find the PlayerController in the scene
+    }
 
     void OnTriggerEnter2D(Collider2D other)
     {
@@ -11,7 +16,8 @@ public class CrashDetector : MonoBehaviour
         if (other.gameObject.layer == layerIndex)
         {
             Debug.Log("Player has crashed!");
-            finishParticles.Play(); // Play the finish line particle effect
+            playerController.CanControlPlayer1 = false; // Disable player control
+            bloodParticles.Play(); // Play the blood particle effect
             Invoke(nameof(reloadScene), 1f); // Reload the scene after a 1-second delay
         }
     }
