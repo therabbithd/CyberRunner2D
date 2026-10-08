@@ -8,5 +8,11 @@ public class CharacterMenuManager : MonoBehaviour
         // Load the main menu scene when the "Back" button is clicked
         SceneManager.LoadScene("Menu");
     }
-    pub
+    public void selectCharacter(int characterIndex)
+    {
+        // Store the selected character index in PlayerPrefs
+        PlayerPrefs.SetInt("SelectedCharacter", characterIndex);
+        //save player preferences
+        PlayerPrefs.Save();
+    }
 }

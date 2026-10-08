@@ -8,9 +8,10 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float boostSpeed = 30f;
     [SerializeField] private ParticleSystem SnowParticles; // Particle system for boost effects
     [SerializeField] private ScoreManager scoreManager; // Reference to the ScoreManager component
+    [SerializeField] private SpriteRenderer[] characterSprites; // Reference to the SpriteRenderer component for character sprites
     private int ActivePowerUpCount = 0; // Counter for active power-ups
-    public int CharacterIndex; // Index to identify the character being used
     private bool CanControlPlayer = true; // Flag to control player input
+    private int characterIndex = 1; // Index of the selected character
 
     float baseSpeed ;
 
@@ -27,6 +28,18 @@ public class PlayerController : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
+        characterIndex = PlayerPrefs.GetInt("SelectedCharacter", 0); // Retrieve the selected character index from PlayerPrefs
+        if(characterSprites != null)
+        {
+            if(characterIndex == 1)
+            {
+                characterSprites[0].sprite = Resources.Load<Sprite>("DinoChar"); // Load the sprite for character 2
+            }
+            else if(characterIndex == 2)
+            {
+                characterSprites[1].sprite = Resources.Load<Sprite>("FrogChar"); // Load the sprite for character 3
+            }
+        }
         moveAction = InputSystem.actions.FindAction("Move");
         rb = GetComponent<Rigidbody2D>();
         surfaceEffector2D = FindAnyObjectByType<SurfaceEffector2D>();
