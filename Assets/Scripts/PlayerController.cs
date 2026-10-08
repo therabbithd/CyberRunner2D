@@ -8,6 +8,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float boostSpeed = 30f;
     [SerializeField] private ParticleSystem SnowParticles; // Particle system for boost effects
     [SerializeField] private ScoreManager scoreManager; // Reference to the ScoreManager component
+    private int ActivePowerUpCount = 0; // Counter for active power-ups
 
     private bool CanControlPlayer = true; // Flag to control player input
 
@@ -103,6 +104,24 @@ public class PlayerController : MonoBehaviour
         if(collision.gameObject.layer == LayerIndex)
         {
             SnowParticles.Stop(); // Stop the boost particle effect when exiting collision with the floor
+        }
+    }
+    public void ApplyPowerUp(PowerUpScriptableObject powerUp)
+    {
+       ActivePowerUpCount++;
+       if (powerUp.PowerUpType1 == "Speed")
+        {
+            baseSpeed += powerUp.PowerUpValue1; // Increase the base speed by the power-up value
+            boostSpeed += powerUp.PowerUpValue1; // Increase the boost speed by the power-up value
+        }
+    }
+    public void RemovePowerUp(PowerUpScriptableObject powerUp)
+    {
+        ActivePowerUpCount--;
+        if (powerUp.PowerUpType1 == "Speed")
+        {
+            baseSpeed -= powerUp.PowerUpValue1; // Decrease the base speed by the power-up value
+            boostSpeed -= powerUp.PowerUpValue1; // Decrease the boost speed by the power-up value
         }
     }
 }
