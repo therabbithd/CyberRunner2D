@@ -9,7 +9,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private ParticleSystem SnowParticles; // Particle system for boost effects
     [SerializeField] private ScoreManager scoreManager; // Reference to the ScoreManager component
     private int ActivePowerUpCount = 0; // Counter for active power-ups
-
+    public int CharacterIndex; // Index to identify the character being used
     private bool CanControlPlayer = true; // Flag to control player input
 
     float baseSpeed ;
