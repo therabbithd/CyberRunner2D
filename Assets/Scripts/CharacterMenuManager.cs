@@ -10,9 +10,15 @@ public class CharacterMenuManager : MonoBehaviour
     }
     public void selectCharacter(int characterIndex)
     {
-        // Store the selected character index in PlayerPrefs
+        if (characterIndex < 1)
+        {
+            Debug.LogWarning($"CharacterMenuManager: invalid character index {characterIndex}.");
+            return;
+        }
+        // Store the selected character index in PlayerPrefs (1-based: 1=Dino, 2=Frog)
         PlayerPrefs.SetInt("SelectedCharacter", characterIndex);
         //save player preferences
         PlayerPrefs.Save();
+        Debug.Log($"CharacterMenuManager: character {characterIndex} selected and saved.");
     }
 }

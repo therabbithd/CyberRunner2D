@@ -9,41 +9,49 @@ public class PowerUpManager : MonoBehaviour
     SpriteRenderer powerUpSpriteRenderer; // Reference to the SpriteRenderer component of the player
 
     float TimeLeft;
+    PowerUpScriptableObject activePowerUp; // Power-up currently applied to the player
 
     private void Start()
     {
         playerController = FindAnyObjectByType<PlayerController>(); // Find the PlayerController in the scene
         powerUpSpriteRenderer = GetComponentInChildren<SpriteRenderer>(); // Get the SpriteRenderer component of the children
-        TimeLeft = PowerUp.TimeLimit1;
+        if (PowerUp != null)
+        {
+            TimeLeft = PowerUp.TimeLimit1;
+        }
+    }
+    private void Update()
+    {
+        CountDownPowerUpTime();
     }
     private void CountDownPowerUpTime()
     {
-        if (powerUpSpriteRenderer.enabled == false)
+        if (powerUpSpriteRenderer == null || powerUpSpriteRenderer.enabled) return;
+        if (TimeLeft > 0)
         {
-            if (TimeLeft > 0)
+            TimeLeft -= Time.deltaTime; // Decrease the time left for the power-up
+        }
+        if (TimeLeft <= 0)
+        {
+            TimeLeft = 0; // Ensure time left doesn't go below zero
+            powerUpSpriteRenderer.enabled = true; // Enable the power-up sprite renderer to show it again
+            if (activePowerUp != null && playerController != null)
             {
-                TimeLeft -= Time.deltaTime; // Decrease the time left for the power-up
-                if (TimeLeft <= 0)
-                {
-                    TimeLeft = 0; // Ensure time left doesn't go below zero
-                    powerUpSpriteRenderer.enabled = true; // Enable the power-up sprite renderer to show it again
-                }
-            }
-            else
-            {
-                TimeLeft = 0; // Ensure time left doesn't go below zero
-                powerUpSpriteRenderer.enabled = true; // Enable the power-up sprite renderer to show it again
+                playerController.RemovePowerUp(activePowerUp); // Revert the temporary boost
+                activePowerUp = null;
             }
         }
-        
     }
     void OnTriggerEnter2D(Collider2D other)
     {
-        if(other.CompareTag("Player") && powerUpSpriteRenderer.enabled )
+        if (PowerUp == null || playerController == null) return;
+        if(other.CompareTag("Player") && powerUpSpriteRenderer != null && powerUpSpriteRenderer.enabled )
         {
             powerUpSpriteRenderer.enabled = false;
-            PowerUpParticles.Play(); // Play the power-up particle effect
+            if (PowerUpParticles != null) PowerUpParticles.Play(); // Play the power-up particle effect
             playerController.ApplyPowerUp(PowerUp); // Call the ApplyPowerUp method in the PlayerController script
+            activePowerUp = PowerUp;
+            TimeLeft = PowerUp.TimeLimit1; // Restart the effect duration on each pickup
         }
     }
 }

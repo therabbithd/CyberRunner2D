@@ -6,7 +6,7 @@ public class LevelSelManager : MonoBehaviour
     public void gotolevel(int levelIndex)
     {
         // Load the specified level scene based on the provided level index
-        string levelName = "level" + levelIndex; // Construct the level name (e.g., "level1", "level2", etc.)
+        string levelName = "Level" + levelIndex; // Construct the level name (e.g., "Level1", "Level2", etc.)
         UnityEngine.SceneManagement.SceneManager.LoadScene(levelName); // Load the corresponding level scene
     }
     public void BackToMenu()

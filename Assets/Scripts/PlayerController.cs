@@ -14,6 +14,7 @@ public class PlayerController : MonoBehaviour
     private int characterIndex = 1; // Index of the selected character
 
     float baseSpeed ;
+    float baseTorqueAmount;
 
     SurfaceEffector2D surfaceEffector2D;
     InputAction moveAction;
@@ -28,22 +29,38 @@ public class PlayerController : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        characterIndex = PlayerPrefs.GetInt("SelectedCharacter", 0); // Retrieve the selected character index from PlayerPrefs
-        if(characterSprites != null)
-        {
-            if(characterIndex == 1)
-            {
-                characterSprites[0].sprite = Resources.Load<Sprite>("DinoChar"); // Load the sprite for character 2
-            }
-            else if(characterIndex == 2)
-            {
-                characterSprites[1].sprite = Resources.Load<Sprite>("FrogChar"); // Load the sprite for character 3
-            }
-        }
+        characterIndex = PlayerPrefs.GetInt("SelectedCharacter", 1); // Retrieve the selected character index from PlayerPrefs (1-based: 1=Dino, 2=Frog)
+        ApplySelectedCharacter();
         moveAction = InputSystem.actions.FindAction("Move");
         rb = GetComponent<Rigidbody2D>();
         surfaceEffector2D = FindAnyObjectByType<SurfaceEffector2D>();
         baseSpeed = surfaceEffector2D.speed; // Store the initial speed of the SurfaceEffector2D
+        baseTorqueAmount = torqueamount; // Store the initial torque so Torque power-ups can be reverted
+    }
+
+    /// <summary>
+    /// Activates only the selected character GameObject and deactivates the rest.
+    /// characterSprites order must match the menu: [0]=Dino (id 1), [1]=Frog (id 2).
+    /// </summary>
+    private void ApplySelectedCharacter()
+    {
+        if (characterSprites == null || characterSprites.Length == 0)
+        {
+            Debug.LogWarning("PlayerController: characterSprites is not assigned, keeping default visuals.");
+            return;
+        }
+        int clampedIndex = Mathf.Clamp(characterIndex, 1, characterSprites.Length);
+        if (clampedIndex != characterIndex)
+        {
+            Debug.LogWarning($"PlayerController: SelectedCharacter {characterIndex} out of range, clamped to {clampedIndex}.");
+            characterIndex = clampedIndex;
+        }
+        for (int i = 0; i < characterSprites.Length; i++)
+        {
+            if (characterSprites[i] == null) continue;
+            characterSprites[i].gameObject.SetActive(i == characterIndex - 1);
+        }
+        Debug.Log($"PlayerController: character {characterIndex} activated.");
     }
 
     // Update is called once per frame
@@ -121,20 +138,30 @@ public class PlayerController : MonoBehaviour
     }
     public void ApplyPowerUp(PowerUpScriptableObject powerUp)
     {
+       if (powerUp == null) return;
        ActivePowerUpCount++;
        if (powerUp.PowerUpType1 == "Speed")
         {
             baseSpeed += powerUp.PowerUpValue1; // Increase the base speed by the power-up value
             boostSpeed += powerUp.PowerUpValue1; // Increase the boost speed by the power-up value
         }
+        else if (powerUp.PowerUpType1 == "Torque")
+        {
+            torqueamount += powerUp.PowerUpValue1; // Increase rotation responsiveness
+        }
     }
     public void RemovePowerUp(PowerUpScriptableObject powerUp)
     {
-        ActivePowerUpCount--;
+        if (powerUp == null) return;
+        ActivePowerUpCount = Mathf.Max(0, ActivePowerUpCount - 1);
         if (powerUp.PowerUpType1 == "Speed")
         {
             baseSpeed -= powerUp.PowerUpValue1; // Decrease the base speed by the power-up value
             boostSpeed -= powerUp.PowerUpValue1; // Decrease the boost speed by the power-up value
+        }
+        else if (powerUp.PowerUpType1 == "Torque")
+        {
+            torqueamount = Mathf.Max(baseTorqueAmount, torqueamount - powerUp.PowerUpValue1);
         }
     }
 }
