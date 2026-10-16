@@ -17,7 +17,9 @@ public class PlayerController : MonoBehaviour
     float baseTorqueAmount;
 
     SurfaceEffector2D surfaceEffector2D;
+    SurfaceEffector2D[] allEffectors;
     InputAction moveAction;
+    SpiderGravityController spider;
     Vector2 moveInput;
     Rigidbody2D rb;
     int flipCount;
@@ -25,6 +27,12 @@ public class PlayerController : MonoBehaviour
     float totalRotation;
 
     public bool CanControlPlayer1 { get => CanControlPlayer; set => CanControlPlayer = value; }
+
+    /// <summary>
+    /// SpiderGravityController lo pone a -1 cuando la gravedad esta invertida
+    /// para que A/D no se sientan espejados en el techo. 1 = normal.
+    /// </summary>
+    public int TorqueDirection { get; set; } = 1;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -34,7 +42,9 @@ public class PlayerController : MonoBehaviour
         moveAction = InputSystem.actions.FindAction("Move");
         rb = GetComponent<Rigidbody2D>();
         surfaceEffector2D = FindAnyObjectByType<SurfaceEffector2D>();
-        baseSpeed = surfaceEffector2D.speed; // Store the initial speed of the SurfaceEffector2D
+        allEffectors = FindObjectsByType<SurfaceEffector2D>(FindObjectsSortMode.None); // incluye pista de techo si existe
+        spider = GetComponent<SpiderGravityController>();
+        baseSpeed = surfaceEffector2D != null ? surfaceEffector2D.speed : 10f; // Store the initial speed of the SurfaceEffector2D
         baseTorqueAmount = torqueamount; // Store the initial torque so Torque power-ups can be reverted
     }
 
@@ -80,6 +90,13 @@ public class PlayerController : MonoBehaviour
     private void CalculateFlips()
     {
         float currentRotation = transform.rotation.eulerAngles.z;
+        // Ignora el salto brusco del snap de gravedad para no regalar un flip.
+        if (spider != null && spider.ConsumeSuppressFlipCount())
+        {
+            previousRotation = currentRotation;
+            totalRotation = 0f;
+            return;
+        }
         totalRotation += Mathf.DeltaAngle(previousRotation, currentRotation);
         if (Math.Abs(totalRotation) > 340 || Math.Abs(totalRotation) < -340)
         {
@@ -97,26 +114,35 @@ public class PlayerController : MonoBehaviour
     void PlayerTorque(){
         if (moveInput.x > 0)
         {
-            rb.AddTorque(-torqueamount);
+            rb.AddTorque(-torqueamount * TorqueDirection);
         }
         else if (moveInput.x < 0)
         {
-            rb.AddTorque(torqueamount);
+            rb.AddTorque(torqueamount * TorqueDirection);
         }
     }
     void BoostPlayer()
     {
         // Increase the speed when the arraw up is pressed
-        if (moveInput.y > 0)
+        // Se aplica a TODOS los effectors (suelo + techo) para que el boost funcione boca abajo.
+        // Cada effector conserva su signo: el techo necesita speed negativa para empujar
+        // hacia +X (la normal apunta hacia abajo e invierte la tangente del SurfaceEffector).
+        // Sin esto, poner el techo a -10 duraba un frame: el boost lo reescribia a +30
+        // y el jugador iba marcha atras en el techo.
+        float baseTarget = moveInput.y > 0 ? boostSpeed : baseSpeed;
+        if (allEffectors != null && allEffectors.Length > 0)
         {
-            surfaceEffector2D.speed = boostSpeed;
-            ; // Call the collision method to trigger the boost particle effect
-            // Play the boost particle effect
+            foreach (var eff in allEffectors)
+            {
+                if (eff == null) continue;
+                float dir = eff.speed < 0f ? -1f : 1f;
+                eff.speed = baseTarget * dir;
+            }
         }
-        else
+        else if (surfaceEffector2D != null)
         {
-            surfaceEffector2D.speed = baseSpeed;
-           // Stop the boost particle effect when not boosting
+            float dir = surfaceEffector2D.speed < 0f ? -1f : 1f;
+            surfaceEffector2D.speed = baseTarget * dir;
         }
     }
     void OnCollisionEnter2D(Collision2D collision)
