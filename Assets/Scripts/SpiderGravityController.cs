@@ -17,16 +17,16 @@ public class SpiderGravityController : MonoBehaviour
     [Header("Gravedad")]
     [Tooltip("Valor positivo base. Debe coincidir con el gravityScale del Rigidbody2D en escena (1.5 en Level1).")]
     [SerializeField] private float normalGravity = 1.5f;
-    [Tooltip("Impulso vertical aplicado al invertir, para pegar al jugador al techo/suelo estilo GD.")]
-    [SerializeField] private float snapImpulse = 12f;
+    [Tooltip("Impulso vertical aplicado al invertir, para pegar al jugador al techo/suelo estilo GD. Alto para vuelo casi-teletransporte.")]
+    [SerializeField] private float snapImpulse = 38f;
     [Tooltip("Tiempo minimo entre inversiones para evitar spam.")]
     [SerializeField] private float toggleCooldown = 0.2f;
     [Tooltip("Frena el giro al pegar el cambio para aterrizar estable sin perder los flips por completo.")]
     [SerializeField] private float angularDampOnToggle = 0.5f;
-    [Tooltip("Velocidad vertical maxima tras el impulso. Evita tunneling a traves del techo (Box 20x0.5).")]
-    [SerializeField] private float maxSnapSpeed = 14f;
-    [Tooltip("Tiempo de inmunidad del CrashDetector tras invertir. Cubre el vuelo hasta el techo para no morir con la cabeza por el camino.")]
-    [SerializeField] private float crashGraceTime = 0.6f;
+    [Tooltip("Velocidad vertical maxima tras el impulso. Alta para vuelo casi-teletransporte; el clamp + Continuous evitan tunneling (<1u por paso fisico).")]
+    [SerializeField] private float maxSnapSpeed = 48f;
+    [Tooltip("Tiempo de inmunidad del CrashDetector tras invertir. Cubre el vuelo rapido hasta la otra superficie + el impacto de aterrizaje.")]
+    [SerializeField] private float crashGraceTime = 1.2f;
     [Tooltip("Distancia mundo desde el centro a los puntos de contacto. La tabla esta en local Y=-1.57, asi que 1.85 queda justo fuera.")]
     [SerializeField] private float checkDistance = 1.85f;
 
