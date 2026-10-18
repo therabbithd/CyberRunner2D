@@ -5,8 +5,11 @@ using UnityEngine.InputSystem;
 public class PlayerController : MonoBehaviour
 {
     [SerializeField] private float torqueamount = 1f;
+    [Tooltip("Grados/segundo de giro con A/D o flechas cuando torqueamount = 1. Los power-ups de Torque lo escalan.")]
+    [SerializeField] private float rotationSpeed = 360f;
+    [Tooltip("Grados/segundo^2 de aceleracion del giro manual. Evita que el personaje gire de golpe.")]
+    [SerializeField] private float rotationAcceleration = 3600f;
     [SerializeField] private float boostSpeed = 30f;
-    [SerializeField] private ParticleSystem SnowParticles; // Particle system for boost effects
     [SerializeField] private ScoreManager scoreManager; // Reference to the ScoreManager component
     [SerializeField] private SpriteRenderer[] characterSprites; // Reference to the SpriteRenderer component for character sprites
     private int ActivePowerUpCount = 0; // Counter for active power-ups
@@ -25,6 +28,7 @@ public class PlayerController : MonoBehaviour
     int flipCount;
     float previousRotation;
     float totalRotation;
+    float playerAngularVelocity;
 
     public bool CanControlPlayer1 { get => CanControlPlayer; set => CanControlPlayer = value; }
 
@@ -41,6 +45,10 @@ public class PlayerController : MonoBehaviour
         ApplySelectedCharacter();
         moveAction = InputSystem.actions.FindAction("Move");
         rb = GetComponent<Rigidbody2D>();
+        // El giro lo controla SOLO el input (A/D o flechas). Congelamos la
+        // rotacion fisica para que ningun obstaculo pueda girar al personaje.
+        rb.freezeRotation = true;
+        rb.angularVelocity = 0f;
         allEffectors = FindObjectsByType<SurfaceEffector2D>(); // incluye pista de techo si existe
         surfaceEffector2D = FindGroundEffector(allEffectors);
         spider = GetComponent<SpiderGravityController>();
@@ -81,10 +89,16 @@ public class PlayerController : MonoBehaviour
     {
         if (!CanControlPlayer) return; // If player control is disabled, exit the Update method
         moveInput = moveAction.ReadValue<Vector2>();
-        PlayerTorque();
         BoostPlayer();
         CalculateFlips();
 
+    }
+
+    // El giro se aplica en FixedUpdate (junto a la fisica) y NO con AddTorque:
+    // al tener freezeRotation activo, ningun obstaculo puede impartir spin.
+    void FixedUpdate()
+    {
+        ApplyPlayerRotation();
     }
 
     /// <summary>
@@ -106,23 +120,41 @@ public class PlayerController : MonoBehaviour
             flipCount++;
             Debug.Log("Flips: " + flipCount);
             totalRotation = 0; // Reset the total rotation after a flip
-            scoreManager.AddScore(flipCount * 100); // Update the score in the ScoreManager
+            scoreManager.AddScore(100); // Cada voltereta suma 100 puntos (ScoreManager acumula; las monedas suman aparte)
         }
         previousRotation = currentRotation;
     }
 
     /// <summary>
-    /// Applies torque to the player based on the horizontal input from the move action.
+    /// Rota al jugador SOLO segun la entrada horizontal (A/D o flechas).
+    /// Como la rotacion fisica esta congelada, los choques con obstaculos no
+    /// aportan giro: rb.angularVelocity se mantiene a cero y el angulo lo
+    /// fijamos manualmente con MoveRotation.
     /// </summary>
-    void PlayerTorque(){
-        if (moveInput.x > 0)
+    void ApplyPlayerRotation()
+    {
+        if (rb == null) return;
+
+        if (!CanControlPlayer)
         {
-            rb.AddTorque(-torqueamount * TorqueDirection);
+            playerAngularVelocity = 0f;
+            rb.angularVelocity = 0f;
+            return;
         }
-        else if (moveInput.x < 0)
-        {
-            rb.AddTorque(torqueamount * TorqueDirection);
-        }
+
+        float dir = 0f;
+        if (moveInput.x > 0f) dir = -1f;
+        else if (moveInput.x < 0f) dir = 1f;
+        dir *= torqueamount * TorqueDirection;
+
+        float target = dir * rotationSpeed;
+        playerAngularVelocity = Mathf.MoveTowards(playerAngularVelocity, target, rotationAcceleration * Time.fixedDeltaTime);
+
+        if (playerAngularVelocity != 0f)
+            rb.MoveRotation(rb.rotation + playerAngularVelocity * Time.fixedDeltaTime);
+
+        // Refuerzo: la fisica nunca debe acumular spin propio.
+        rb.angularVelocity = 0f;
     }
     /// <summary>
     /// Devuelve la superficie de SUELO (la que empuja hacia +X, speed positiva).
@@ -167,23 +199,6 @@ public class PlayerController : MonoBehaviour
             surfaceEffector2D.speed = baseTarget * dir;
         }
     }
-    void OnCollisionEnter2D(Collision2D collision)
-    {
-        int LayerIndex = LayerMask.NameToLayer("Floor");
-        if(collision.gameObject.layer == LayerIndex)
-        {
-            SnowParticles.Play(); // Play the boost particle effect when colliding with the floor
-        }
-        
-    }
-    void OnCollisionExit2D(Collision2D collision)
-    {
-        int LayerIndex = LayerMask.NameToLayer("Floor");
-        if(collision.gameObject.layer == LayerIndex)
-        {
-            SnowParticles.Stop(); // Stop the boost particle effect when exiting collision with the floor
-        }
-    }
     public void ApplyPowerUp(PowerUpScriptableObject powerUp)
     {
        if (powerUp == null) return;
@@ -196,6 +211,11 @@ public class PlayerController : MonoBehaviour
         else if (powerUp.PowerUpType1 == "Torque")
         {
             torqueamount += powerUp.PowerUpValue1; // Increase rotation responsiveness
+        }
+        else if (powerUp.PowerUpType1 == "Spider")
+        {
+            // Sube la velocidad del impulso al entrar en modo arana (snap al techo).
+            if (spider != null) spider.AddSnapSpeed(powerUp.PowerUpValue1);
         }
     }
     public void RemovePowerUp(PowerUpScriptableObject powerUp)
@@ -210,6 +230,10 @@ public class PlayerController : MonoBehaviour
         else if (powerUp.PowerUpType1 == "Torque")
         {
             torqueamount = Mathf.Max(baseTorqueAmount, torqueamount - powerUp.PowerUpValue1);
+        }
+        else if (powerUp.PowerUpType1 == "Spider")
+        {
+            if (spider != null) spider.RemoveSnapSpeed(powerUp.PowerUpValue1);
         }
     }
 }

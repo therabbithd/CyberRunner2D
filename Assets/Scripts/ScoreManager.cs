@@ -4,9 +4,17 @@ using TMPro;
 public class ScoreManager : MonoBehaviour
 {
     [SerializeField] TextMeshProUGUI scoreText; // Reference to the TextMeshProUGUI component for displaying the score
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    public void AddScore(int score)
+    int currentScore; // Puntuacion acumulada (volteretas + monedas)
+
+    public int CurrentScore => currentScore;
+
+    /// <summary>
+    /// Suma puntos al marcador: 100 por voltereta y 50 por moneda (ver Coin.cs).
+    /// </summary>
+    public void AddScore(int points)
     {
-        scoreText.text = score.ToString("0000"); // Update the score text with the new score
+        currentScore += points;
+        if (scoreText != null)
+            scoreText.text = currentScore.ToString("0000");
     }
 }

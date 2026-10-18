@@ -150,7 +150,7 @@ Para editar el menú: doble clic en `Assets/Prefabs/PauseMenu.prefab` y modifica
 
 | Fichero | Clase | Qué hace |
 |---|---|---|
-| `PlayerController.cs` | `PlayerController` | Núcleo: torque (× `TorqueDirection` en modo araña), boost multi-effector con signo, **salto** (`JumpPlayer`, dirección invertida en modo araña), personaje activo (`ApplySelectedCharacter`), conteo de flips (`CalculateFlips` → `ScoreManager.AddScore`, con supresión del snap), nieve en `OnCollisionEnter/Exit2D`, `ApplyPowerUp` / `RemovePowerUp` (`Speed`, `Torque` y `Jump`). |
+| `PlayerController.cs` | `PlayerController` | Núcleo: torque (× `TorqueDirection` en modo araña), boost multi-effector con signo, **salto** (`JumpPlayer`, dirección invertida en modo araña), personaje activo (`ApplySelectedCharacter`), conteo de flips (`CalculateFlips` → `ScoreManager.AddScore`, con supresión del snap), nieve en `OnCollisionEnter/Exit2D`, `ApplyPowerUp` / `RemovePowerUp` (`Speed`, `Torque` y `Spider`). |
 | `SpiderGravityController.cs` | `SpiderGravityController` | Modo araña: inversión de gravedad, snap al techo/suelo, espejo de colliders, flip visual, cooldown, inmunidad de crash, detección suelo/techo. Ver sección dedicada. |
 | `SpiderCeilingTrack.cs` | `SpiderCeilingTrack` | Tramo de techo: configura `BoxCollider2D` + `SurfaceEffector2D` con signo (`negateSpeed`). Ver sección dedicada. |
 | `PauseMenu.cs` | `PauseMenu` | Pausa con `Escape` (`timeScale 0/1`): Continuar / Reiniciar / Menú. UI en `PauseMenu.prefab` (editable). Ver sección dedicada. |
@@ -179,7 +179,7 @@ Para editar el menú: doble clic en `Assets/Prefabs/PauseMenu.prefab` y modifica
 | `PowerUpShortSpeed.asset` | `Speed` | 1 s | 10 | +10 a `baseSpeed`/`boostSpeed`. |
 | `PowerUpLongSpeed.asset` | `Speed` | 3 s | 10 | +10 a `baseSpeed`/`boostSpeed`. |
 | `PowerUpTorque.asset` | `Torque` | 10 s | 1 | +1 a `torqueamount` (respuesta de giro) durante 10 s. |
-| `PowerUpJump.asset` | `Jump` | 5 s | 8 | +8 a `jumpForce` (salto más alto); funciona en suelo y en modo araña. |
+| `PowerUpSpider.asset` | `Spider` | 6 s | 12 | Sube la velocidad de subida en modo araña: +12 a `snapImpulse` y `maxSnapSpeed` del `SpiderGravityController` (el impulso al invertir la gravedad es más rápido). Colocado en `Level1` (x≈45). Reutiliza el antiguo asset `PowerUpJump` (mismo GUID), ya retirado. |
 
 ### `Assets/Sprites/` — sprites de personaje en juego
 

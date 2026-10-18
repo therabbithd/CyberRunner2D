@@ -30,6 +30,12 @@ public class SpiderGravityController : MonoBehaviour
     [Tooltip("Distancia mundo desde el centro a los puntos de contacto. La tabla esta en local Y=-1.57; 1.75 deja el circulo del check solapando la superficie al apoyarse (con 1.85 el check quedaba justo por debajo y grounded era casi siempre false).")]
     [SerializeField] private float checkDistance = 1.75f;
 
+    [Header("Muerte al caer hacia arriba")]
+    [Tooltip("Con la gravedad invertida el jugador 'cae' hacia arriba. Si no hay techo que lo pare y se sale por arriba del nivel, muere (antes salia volando infinitamente).")]
+    [SerializeField] private bool killWhenEscapingTop = true;
+    [Tooltip("Margen por encima del punto mas alto del nivel (capa Floor) antes de morir. Evita matar durante el vuelo normal al techo.")]
+    [SerializeField] private float topEscapeMargin = 6f;
+
     [Header("Deteccion suelo / techo (OverlapCircle)")]
     [Tooltip("Vacio hijo bajo la tabla. Si esta vacio se autocrea en (0,-1.85,0): justo bajo la CapsuleCollider2D (offset -1.28, tamano Y 0.58 -> base en -1.57). El valor antiguo -0.7 quedaba DENTRO de la tabla y grounded casi nunca era true.")]
     [SerializeField] private Transform groundCheck;
@@ -66,6 +72,7 @@ public class SpiderGravityController : MonoBehaviour
 
     private Rigidbody2D rb;
     private PlayerController player;
+    private CrashDetector crashDetector; // Muerte unificada (particulas + recarga)
     private Collider2D boardCollider; // tabla (solida, rueda en suelo/techo)
     private CircleCollider2D headCollider; // cabeza (trigger que mata en CrashDetector)
     private Vector2 baseBoardOffset;
@@ -73,12 +80,18 @@ public class SpiderGravityController : MonoBehaviour
     private InputAction spiderAction;
     private float lastToggleTime = -10f;
     private float baseVisualScaleY = 1f;
+    private float baseSnapImpulse;
+    private float baseMaxSnapSpeed;
+    private float topEscapeY = float.PositiveInfinity; // Punto mas alto del nivel + margen
+    private bool escapedTop;
     private bool suppressFlipCountOnce;
+    private readonly System.Collections.Generic.List<ContactPoint2D> contactBuffer = new System.Collections.Generic.List<ContactPoint2D>(8);
 
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         player = GetComponent<PlayerController>();
+        crashDetector = GetComponent<CrashDetector>();
         // Anti-tunneling: el impulso del snap (12) con Discrete atraviesa el
         // techo de 0.5. Forzar Continuous aunque la escena diga Discrete.
         if (rb != null && rb.collisionDetectionMode == CollisionDetectionMode2D.Discrete)
@@ -97,6 +110,9 @@ public class SpiderGravityController : MonoBehaviour
             visualsRoot = FindVisualsChild();
         if (visualsRoot != null)
             baseVisualScaleY = Mathf.Abs(visualsRoot.localScale.y) < 0.001f ? 1f : visualsRoot.localScale.y;
+        // Guards para revertir el power-up "Spider" (velocidad de subida).
+        baseSnapImpulse = snapImpulse;
+        baseMaxSnapSpeed = maxSnapSpeed;
     }
 
     void Start()
@@ -107,6 +123,7 @@ public class SpiderGravityController : MonoBehaviour
         ApplyGravityScale();
         ApplyVisualFlip();
         ApplyColliderMirror();
+        ComputeTopEscapeLimit();
     }
 
     void OnEnable()
@@ -135,6 +152,7 @@ public class SpiderGravityController : MonoBehaviour
     void FixedUpdate()
     {
         UpdateContactFlags();
+        CheckTopEscape();
         // El techo esta a ~32u y es un Edge sin grosor: sin tope, la gravedad
         // acelera el vuelo hasta ~33 u/s y atraviesa el Edge aunque sea
         // Continuous (0.66u por frame). Clampear en vuelo lo deja en 0.28u.
@@ -292,8 +310,77 @@ public class SpiderGravityController : MonoBehaviour
             groundCheck.position = groundPoint;
         if (ceilingCheck != null)
             ceilingCheck.position = ceilingPoint;
-        IsGrounded = Physics2D.OverlapCircle(groundPoint, checkRadius, groundMask) != null;
-        IsCeilinged = Physics2D.OverlapCircle(ceilingPoint, checkRadius, groundMask) != null;
+        bool grounded = Physics2D.OverlapCircle(groundPoint, checkRadius, groundMask) != null;
+        bool ceiled = Physics2D.OverlapCircle(ceilingPoint, checkRadius, groundMask) != null;
+
+        // Refuerzo con los contactos reales del Rigidbody: el punto fijo a
+        // checkDistance del centro falla cuando la tabla va inclinada (flips,
+        // rampas) o el jugador se apoya en una roca (capa distinta a Floor),
+        // dejando el modo arana muerto en Level1. Un contacto con normal hacia
+        // arriba = superficie debajo (suelo); hacia abajo = superficie arriba
+        // (techo). Es independiente del giro del root y de la capa del suelo.
+        if (rb != null)
+        {
+            contactBuffer.Clear();
+            rb.GetContacts(contactBuffer);
+            for (int i = 0; i < contactBuffer.Count; i++)
+            {
+                Collider2D other = contactBuffer[i].collider;
+                if (other == null || other.isTrigger || other.attachedRigidbody == rb) continue;
+                float ny = contactBuffer[i].normal.y;
+                if (ny >= 0.5f) grounded = true;
+                else if (ny <= -0.5f) ceiled = true;
+            }
+        }
+
+        IsGrounded = grounded;
+        IsCeilinged = ceiled;
+    }
+
+    /// <summary>
+    /// Calcula el techo real del nivel: el punto mas alto entre los colliders
+    /// solidos de la capa Floor (suelo, techo y rocas son la misma capa).
+    /// Se usa para matar al jugador si se sale por arriba al caer hacia arriba.
+    /// Se ignora el jugador (tiene Rigidbody2D) y los triggers (zonas de muerte).
+    /// </summary>
+    private void ComputeTopEscapeLimit()
+    {
+        if (!killWhenEscapingTop) return;
+
+        int floor = LayerMask.NameToLayer("Floor");
+        if (floor < 0) return;
+
+        float maxY = float.NegativeInfinity;
+        var colliders = FindObjectsByType<Collider2D>(FindObjectsSortMode.None);
+        foreach (var col in colliders)
+        {
+            if (col == null || col.isTrigger) continue;
+            if (col.gameObject.layer != floor) continue;
+            if (col.attachedRigidbody != null) continue; // superficie estatica
+            if (col.bounds.max.y > maxY) maxY = col.bounds.max.y;
+        }
+
+        if (maxY > float.NegativeInfinity)
+            topEscapeY = maxY + topEscapeMargin;
+    }
+
+    /// <summary>
+    /// Mata al jugador cuando, con la gravedad invertida (cae hacia arriba),
+    /// supera el techo del nivel sin una superficie que lo pare. Evita el vuelo
+    /// infinito hacia arriba al salir de la zona con techo.
+    /// </summary>
+    private void CheckTopEscape()
+    {
+        if (!killWhenEscapingTop || escapedTop || rb == null) return;
+        if (!IsInverted) return; // Solo "cae hacia arriba" con la gravedad invertida
+        if (rb.position.y <= topEscapeY) return;
+
+        escapedTop = true;
+        Debug.Log("Player escaped the top (fell upwards)!");
+        if (crashDetector != null)
+            crashDetector.Kill();
+        else if (player != null)
+            player.CanControlPlayer1 = false;
     }
 
     private void EnsureChecksExist()
@@ -341,6 +428,27 @@ public class SpiderGravityController : MonoBehaviour
         if (!suppressFlipCountOnce) return false;
         suppressFlipCountOnce = false;
         return true;
+    }
+
+    /// <summary>
+    /// Power-up "Spider": acelera el impulso de subida al invertir la gravedad.
+    /// Sube snapImpulse y tambien maxSnapSpeed, porque el clamp de vuelo
+    /// recortaria el impulso si solo creciera el primero.
+    /// </summary>
+    public void AddSnapSpeed(float amount)
+    {
+        snapImpulse += amount;
+        maxSnapSpeed += amount;
+    }
+
+    /// <summary>
+    /// Revierte AddSnapSpeed sin bajar de los valores base (soporta varios
+    /// recogibles activos a la vez sin dejar el impulso por debajo del original).
+    /// </summary>
+    public void RemoveSnapSpeed(float amount)
+    {
+        snapImpulse = Mathf.Max(baseSnapImpulse, snapImpulse - amount);
+        maxSnapSpeed = Mathf.Max(baseMaxSnapSpeed, maxSnapSpeed - amount);
     }
 
     void OnDrawGizmosSelected()

@@ -10,8 +10,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e47996f0a8adeb9478ca12ba57be6008, type: 3}
-  m_Name: PowerUpJump
+  m_Name: PowerUpSpider
   m_EditorClassIdentifier: Assembly-CSharp::PowerUpScriptableObject
-  PowerUpType: Jump
-  TimeLimit: 5
-  PowerUpValue: 8
+  PowerUpType: Spider
+  TimeLimit: 6
+  PowerUpValue: 12

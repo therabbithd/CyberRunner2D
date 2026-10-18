@@ -95,6 +95,10 @@ public static class BuildLevels
             var scene = EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
             log.AppendLine("opened " + path);
 
+            // La escena base puede traer monedas copiadas de Level1; se regeneran luego con BuildCoins.
+            var oldCoins = GameObject.Find("coins");
+            if (oldCoins != null) UnityEngine.Object.DestroyImmediate(oldCoins);
+
             var floor = GameObject.Find("LevelSpriteShape (1)");
             var ceil = GameObject.Find("LevelSpriteShape (2)");
             if (floor == null || ceil == null)
