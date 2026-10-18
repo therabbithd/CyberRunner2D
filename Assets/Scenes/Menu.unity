@@ -708,7 +708,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: SnowSurfer2D
+  m_text: CyberRunner2D
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: bfad5ae9edf5d2a4eb04989a749ed300, type: 2}
   m_sharedMaterial: {fileID: 4717779644253091048, guid: bfad5ae9edf5d2a4eb04989a749ed300, type: 2}

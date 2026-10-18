@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// Modo Arana estilo Geometry Dash para SnowSurfer2D (Legacy 2D Physics).
+/// Modo Arana estilo Geometry Dash para CyberRunner2D (Legacy 2D Physics).
 /// Pulsa la accion "Spider" (W / UpArrow por defecto; Espacio es salto)
 /// para invertir rb.gravityScale y salir disparado hacia el techo. Vuelve
 /// a pulsar para caer al suelo. Voltea solo los visuales (eje Y) para no romper

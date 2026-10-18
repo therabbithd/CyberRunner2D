@@ -1,4 +1,4 @@
-# SnowSurfer2D 🏂❄️
+# CyberRunner2D 🏂❄️
 
 Juego 2D de snowboard con físicas para Unity **6000.6.3f1** (URP + Input System).
 Bajas una ladera nevada con tabla, haces volteretas 360º para puntuar, recoges power-ups de velocidad, puedes **invertir la gravedad al estilo Geometry Dash para rodar por el techo** (modo araña) y evitas partirte la cabeza contra la nieve.
