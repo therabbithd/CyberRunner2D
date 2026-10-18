@@ -41,10 +41,13 @@ public class PlayerController : MonoBehaviour
         ApplySelectedCharacter();
         moveAction = InputSystem.actions.FindAction("Move");
         rb = GetComponent<Rigidbody2D>();
-        surfaceEffector2D = FindAnyObjectByType<SurfaceEffector2D>();
-        allEffectors = FindObjectsByType<SurfaceEffector2D>(FindObjectsSortMode.None); // incluye pista de techo si existe
+        allEffectors = FindObjectsByType<SurfaceEffector2D>(); // incluye pista de techo si existe
+        surfaceEffector2D = FindGroundEffector(allEffectors);
         spider = GetComponent<SpiderGravityController>();
-        baseSpeed = surfaceEffector2D != null ? surfaceEffector2D.speed : 10f; // Store the initial speed of the SurfaceEffector2D
+        // Magnitud SIEMPRE positiva de la pista de SUELO. Antes se tomaba el signo de
+        // FindAnyObjectByType, que podia devolver el techo (speed -10): baseSpeed quedaba
+        // en -10 y BoostPlayer ponia el suelo a -10, con lo que el jugador se frenaba solo.
+        baseSpeed = surfaceEffector2D != null ? Mathf.Abs(surfaceEffector2D.speed) : 10f;
         baseTorqueAmount = torqueamount; // Store the initial torque so Torque power-ups can be reverted
     }
 
@@ -121,6 +124,24 @@ public class PlayerController : MonoBehaviour
             rb.AddTorque(torqueamount * TorqueDirection);
         }
     }
+    /// <summary>
+    /// Devuelve la superficie de SUELO (la que empuja hacia +X, speed positiva).
+    /// Evita que FindAnyObjectByType devuelva el techo (speed -10) y deje baseSpeed
+    /// en negativo, lo que hacia que el jugador se frenara solo en algunas partidas.
+    /// </summary>
+    private static SurfaceEffector2D FindGroundEffector(SurfaceEffector2D[] effectors)
+    {
+        if (effectors == null) return null;
+        SurfaceEffector2D fallback = null;
+        foreach (var eff in effectors)
+        {
+            if (eff == null) continue;
+            if (fallback == null) fallback = eff;
+            if (eff.speed > 0f) return eff;
+        }
+        return fallback;
+    }
+
     void BoostPlayer()
     {
         // Increase the speed when the arraw up is pressed
@@ -129,7 +150,8 @@ public class PlayerController : MonoBehaviour
         // hacia +X (la normal apunta hacia abajo e invierte la tangente del SurfaceEffector).
         // Sin esto, poner el techo a -10 duraba un frame: el boost lo reescribia a +30
         // y el jugador iba marcha atras en el techo.
-        float baseTarget = moveInput.y > 0 ? boostSpeed : baseSpeed;
+        // Se usa Mathf.Abs por seguridad: baseSpeed debe ser siempre la magnitud (positiva).
+        float baseTarget = moveInput.y > 0 ? boostSpeed : Mathf.Abs(baseSpeed);
         if (allEffectors != null && allEffectors.Length > 0)
         {
             foreach (var eff in allEffectors)

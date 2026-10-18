@@ -3,9 +3,9 @@ using UnityEngine.InputSystem;
 
 /// <summary>
 /// Modo Arana estilo Geometry Dash para SnowSurfer2D (Legacy 2D Physics).
-/// Pulsa la accion "Spider" (W / Espacio por defecto) para invertir
-/// rb.gravityScale y salir disparado hacia el techo. Vuelve a pulsar
-/// para caer al suelo. Voltea solo los visuales (eje Y) para no romper
+/// Pulsa la accion "Spider" (W / UpArrow por defecto; Espacio es salto)
+/// para invertir rb.gravityScale y salir disparado hacia el techo. Vuelve
+/// a pulsar para caer al suelo. Voltea solo los visuales (eje Y) para no romper
 /// los colliders del root fisico que rota libremente con torque.
 /// Requiere: Rigidbody2D Dynamic en el mismo GameObject.
 /// Deteccion: OverlapCircle en groundCheck / ceilingCheck contra la capa Floor.
@@ -27,8 +27,8 @@ public class SpiderGravityController : MonoBehaviour
     [SerializeField] private float maxSnapSpeed = 48f;
     [Tooltip("Tiempo de inmunidad del CrashDetector tras invertir. Cubre el vuelo rapido hasta la otra superficie + el impacto de aterrizaje.")]
     [SerializeField] private float crashGraceTime = 1.2f;
-    [Tooltip("Distancia mundo desde el centro a los puntos de contacto. La tabla esta en local Y=-1.57, asi que 1.85 queda justo fuera.")]
-    [SerializeField] private float checkDistance = 1.85f;
+    [Tooltip("Distancia mundo desde el centro a los puntos de contacto. La tabla esta en local Y=-1.57; 1.75 deja el circulo del check solapando la superficie al apoyarse (con 1.85 el check quedaba justo por debajo y grounded era casi siempre false).")]
+    [SerializeField] private float checkDistance = 1.75f;
 
     [Header("Deteccion suelo / techo (OverlapCircle)")]
     [Tooltip("Vacio hijo bajo la tabla. Si esta vacio se autocrea en (0,-1.85,0): justo bajo la CapsuleCollider2D (offset -1.28, tamano Y 0.58 -> base en -1.57). El valor antiguo -0.7 quedaba DENTRO de la tabla y grounded casi nunca era true.")]
@@ -48,7 +48,7 @@ public class SpiderGravityController : MonoBehaviour
     [Header("Input")]
     [Tooltip("Nombre de la accion en InputSystem_Actions (mapa Player).")]
     [SerializeField] private string spiderActionName = "Spider";
-    [Tooltip("Fallback por si la accion no existe: tambien escucha W / Espacio / UpArrow con el nuevo Input System.")]
+    [Tooltip("Fallback por si la accion no existe: tambien escucha W / UpArrow con el nuevo Input System. (Espacio queda reservado al salto.)")]
     [SerializeField] private bool useFallbackKeys = true;
 
     // Estado publico (solo lectura) para HUD, audio o tests.
@@ -66,7 +66,7 @@ public class SpiderGravityController : MonoBehaviour
 
     private Rigidbody2D rb;
     private PlayerController player;
-    private CapsuleCollider2D boardCollider; // tabla (solida, rueda en suelo/techo)
+    private Collider2D boardCollider; // tabla (solida, rueda en suelo/techo)
     private CircleCollider2D headCollider; // cabeza (trigger que mata en CrashDetector)
     private Vector2 baseBoardOffset;
     private Vector2 baseHeadOffset;
@@ -85,7 +85,8 @@ public class SpiderGravityController : MonoBehaviour
             rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
         // Guarda los offsets base para el espejo vertical (solo se toca Y,
         // X se conserva para no cambiar el sentido de marcha).
-        boardCollider = GetComponent<CapsuleCollider2D>();
+        boardCollider = GetComponent<BoxCollider2D>();
+        if (boardCollider == null) boardCollider = GetComponent<CapsuleCollider2D>();
         headCollider = GetComponent<CircleCollider2D>();
         if (boardCollider != null)
             baseBoardOffset = boardCollider.offset;
@@ -127,7 +128,7 @@ public class SpiderGravityController : MonoBehaviour
         if (spiderAction != null) return;
 
         var kb = Keyboard.current;
-        if (kb != null && (kb.wKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame || kb.upArrowKey.wasPressedThisFrame))
+        if (kb != null && (kb.wKey.wasPressedThisFrame || kb.upArrowKey.wasPressedThisFrame))
             TryToggle();
     }
 

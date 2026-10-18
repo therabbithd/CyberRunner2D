@@ -11,15 +11,28 @@ public class FinishLine : MonoBehaviour
         {
             Debug.Log("Player has crossed the finish line!");
             finishParticles.Play(); // Play the finish line particle effect
-            Invoke(nameof(reloadScene), reloadDelay); // Reload the scene after the specified delay
+            Invoke(nameof(goToNextLevel), reloadDelay); // Avanza al siguiente nivel tras el retardo
         }
     }
     /// <summary>
-    /// Reloads the current scene when called. This can be used to reset the game state after the player crosses the finish line or crashes.
+    /// Avanza al siguiente nivel al cruzar la bandera de meta. Si el nivel actual
+    /// es "LevelN", carga "LevelN+1" (si existe en Build Settings). Tras el ultimo
+    /// nivel vuelve al selector de niveles.
     /// </summary>
-    void reloadScene()
+    void goToNextLevel()
     {
-        // Reload the current scene
-        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+        string current = SceneManager.GetActiveScene().name;
+        int n;
+        if (current.StartsWith("Level") && current.Length > 5 && int.TryParse(current.Substring(5), out n))
+        {
+            string next = "Level" + (n + 1);
+            // Comprueba que el siguiente nivel existe en Build Settings antes de cargarlo.
+            if (SceneUtility.GetBuildIndexByScenePath("Assets/Scenes/" + next + ".unity") >= 0)
+            {
+                SceneManager.LoadScene(next);
+                return;
+            }
+        }
+        SceneManager.LoadScene("LevelSel");
     }
 }
